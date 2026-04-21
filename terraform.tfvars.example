@@ -1,0 +1,5 @@
+cloudflare_zone_id = "your-zone-id-here"
+
+waf_attack_score_threshold = 50
+
+waf_action = "block"
