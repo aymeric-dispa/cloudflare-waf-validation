@@ -8,8 +8,8 @@ resource "cloudflare_ruleset" "waf_attack_score_protection" {
   rules = [
     {
       action      = var.waf_action
-      expression  = "(cf.threat_score ge ${var.waf_attack_score_threshold})"
-      description = "Block requests with high attack score (>= ${var.waf_attack_score_threshold})"
+      expression  = "(cf.waf.score le ${var.waf_attack_score_threshold})"
+      description = "Block/challenge requests with WAF attack score <= ${var.waf_attack_score_threshold}"
       enabled     = true
     }
   ]
