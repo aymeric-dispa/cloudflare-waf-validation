@@ -20,6 +20,7 @@ Get up and running in 5 minutes!
 #    - Use "Edit zone DNS" template
 #    - Add "Firewall Services: Edit" permission
 ```
+
 ### 2. Setup Terraform Cloud (1 min)
 
 ```bash

@@ -10,18 +10,18 @@ variable "cloudflare_zone_id" {
 }
 
 variable "waf_attack_score_threshold" {
-  description = "Threshold for attack score to trigger blocking (default: 50)"
+  description = "WAF attack score threshold - rules trigger for cf.waf.score <= this value. Lower scores = higher attack probability. Must be >= 20."
   type        = number
-  default     = 50
+  default     = 20
 }
 
 variable "waf_action" {
-  description = "Action to take when attack score exceeds threshold (block, challenge, or managed_challenge)"
+  description = "Action to take when WAF attack score is below threshold (block or challenge)"
   type        = string
   default     = "block"
 
   validation {
-    condition     = contains(["block", "challenge", "managed_challenge"], var.waf_action)
-    error_message = "WAF action must be one of: block, challenge, managed_challenge"
+    condition     = contains(["block", "challenge"], var.waf_action)
+    error_message = "WAF action must be one of: block, challenge"
   }
 }

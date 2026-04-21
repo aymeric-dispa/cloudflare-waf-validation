@@ -15,7 +15,7 @@ test_waf_attack_score_protection_exists if {
                             "rules": [
                                 {
                                     "action": "block",
-                                    "expression": "(cf.threat_score ge 50)",
+                                    "expression": "(cf.waf.score le 20)",
                                     "enabled": true
                                 }
                             ]
@@ -28,18 +28,18 @@ test_waf_attack_score_protection_exists if {
 }
 
 test_missing_waf_protection_fails if {
-    deny[msg] with input as {
+    violations := deny with input as {
         "planned_values": {
             "root_module": {
                 "resources": []
             }
         }
     }
-    count(deny) > 0
+    count(violations) > 0
 }
 
 test_disabled_waf_rule_fails if {
-    deny[msg] with input as {
+    violations := deny with input as {
         "planned_values": {
             "root_module": {
                 "resources": [
@@ -51,7 +51,7 @@ test_disabled_waf_rule_fails if {
                             "rules": [
                                 {
                                     "action": "block",
-                                    "expression": "(cf.threat_score ge 50)",
+                                    "expression": "(cf.waf.score le 20)",
                                     "enabled": false
                                 }
                             ]
@@ -61,11 +61,11 @@ test_disabled_waf_rule_fails if {
             }
         }
     }
-    count(deny) > 0
+    count(violations) > 0
 }
 
 test_wrong_action_fails if {
-    deny[msg] with input as {
+    violations := deny with input as {
         "planned_values": {
             "root_module": {
                 "resources": [
@@ -77,7 +77,7 @@ test_wrong_action_fails if {
                             "rules": [
                                 {
                                     "action": "log",
-                                    "expression": "(cf.threat_score ge 50)",
+                                    "expression": "(cf.waf.score le 20)",
                                     "enabled": true
                                 }
                             ]
@@ -87,7 +87,7 @@ test_wrong_action_fails if {
             }
         }
     }
-    count(deny) > 0
+    count(violations) > 0
 }
 
 test_challenge_action_passes if {
@@ -103,7 +103,7 @@ test_challenge_action_passes if {
                             "rules": [
                                 {
                                     "action": "challenge",
-                                    "expression": "(cf.threat_score ge 50)",
+                                    "expression": "(cf.waf.score le 20)",
                                     "enabled": true
                                 }
                             ]
@@ -113,6 +113,32 @@ test_challenge_action_passes if {
             }
         }
     }
+}
+
+test_threshold_below_20_fails if {
+    violations := deny with input as {
+        "planned_values": {
+            "root_module": {
+                "resources": [
+                    {
+                        "type": "cloudflare_ruleset",
+                        "values": {
+                            "name": "WAF Attack Score Protection",
+                            "phase": "http_request_firewall_custom",
+                            "rules": [
+                                {
+                                    "action": "block",
+                                    "expression": "(cf.waf.score le 10)",
+                                    "enabled": true
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+    }
+    count(violations) > 0
 }
 
 test_high_threshold_warning if {
@@ -128,7 +154,7 @@ test_high_threshold_warning if {
                             "rules": [
                                 {
                                     "action": "block",
-                                    "expression": "(cf.threat_score ge 80)",
+                                    "expression": "(cf.waf.score le 80)",
                                     "enabled": true
                                 }
                             ]
