@@ -9,8 +9,7 @@ on:
       - main
 
 env:
-  TF_CLOUD_ORGANIZATION: "your-org-name"
-  TF_WORKSPACE: "cloudflare-waf-gitops"
+  TF_CLOUD_ORGANIZATION: "infra-aymeric-cfd"
   TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
 
 jobs:
