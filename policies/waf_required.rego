@@ -1,15 +1,13 @@
 package terraform
 
-import future.keywords.contains
-import future.keywords.if
-import future.keywords.in
+import rego.v1
 
-deny[msg] {
+deny contains msg if {
     not has_waf_attack_score_protection
     msg := "POLICY VIOLATION: No WAF rule found protecting against attack scores. At least one cloudflare_ruleset with attack score filtering must be defined."
 }
 
-deny[msg] {
+deny contains msg if {
     resource := input.planned_values.root_module.resources[_]
     resource.type == "cloudflare_ruleset"
     resource.values.phase == "http_request_firewall_custom"
@@ -18,7 +16,7 @@ deny[msg] {
     msg := sprintf("POLICY VIOLATION: WAF attack score rule '%s' exists but is not enabled. All WAF rules must be enabled.", [resource.values.name])
 }
 
-deny[msg] {
+deny contains msg if {
     resource := input.planned_values.root_module.resources[_]
     resource.type == "cloudflare_ruleset"
     resource.values.phase == "http_request_firewall_custom"
@@ -51,7 +49,7 @@ has_blocking_action(resource) if {
     rule.action in ["block", "challenge", "managed_challenge"]
 }
 
-warn[msg] {
+warn contains msg if {
     resource := input.planned_values.root_module.resources[_]
     resource.type == "cloudflare_ruleset"
     resource.values.phase == "http_request_firewall_custom"

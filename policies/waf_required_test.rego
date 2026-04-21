@@ -1,7 +1,9 @@
 package terraform
 
-test_waf_attack_score_protection_exists {
-    not deny[_] with input as {
+import rego.v1
+
+test_waf_attack_score_protection_exists if {
+    count(deny) == 0 with input as {
         "planned_values": {
             "root_module": {
                 "resources": [
@@ -25,7 +27,7 @@ test_waf_attack_score_protection_exists {
     }
 }
 
-test_missing_waf_protection_fails {
+test_missing_waf_protection_fails if {
     deny[msg] with input as {
         "planned_values": {
             "root_module": {
@@ -36,7 +38,7 @@ test_missing_waf_protection_fails {
     count(deny) > 0
 }
 
-test_disabled_waf_rule_fails {
+test_disabled_waf_rule_fails if {
     deny[msg] with input as {
         "planned_values": {
             "root_module": {
@@ -62,7 +64,7 @@ test_disabled_waf_rule_fails {
     count(deny) > 0
 }
 
-test_wrong_action_fails {
+test_wrong_action_fails if {
     deny[msg] with input as {
         "planned_values": {
             "root_module": {
@@ -88,8 +90,8 @@ test_wrong_action_fails {
     count(deny) > 0
 }
 
-test_challenge_action_passes {
-    not deny[_] with input as {
+test_challenge_action_passes if {
+    count(deny) == 0 with input as {
         "planned_values": {
             "root_module": {
                 "resources": [
@@ -113,8 +115,8 @@ test_challenge_action_passes {
     }
 }
 
-test_high_threshold_warning {
-    warn[msg] with input as {
+test_high_threshold_warning if {
+    warnings := warn with input as {
         "planned_values": {
             "root_module": {
                 "resources": [
@@ -136,5 +138,5 @@ test_high_threshold_warning {
             }
         }
     }
-    count(warn) > 0
+    count(warnings) > 0
 }
