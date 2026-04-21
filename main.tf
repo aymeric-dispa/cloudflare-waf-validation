@@ -1,7 +1,7 @@
 resource "cloudflare_ruleset" "waf_attack_score_protection" {
   zone_id     = var.cloudflare_zone_id
   name        = "WAF Attack Score Protection"
-  description = "Managed by Terraform - GitOps enforced WAF rules for attack score protection"
+  description = "Managed by Terraform via GitOps - WAF attack score protection (OPA enforced)"
   kind        = "zone"
   phase       = "http_request_firewall_custom"
 
