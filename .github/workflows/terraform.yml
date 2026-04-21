@@ -61,9 +61,6 @@ jobs:
         run: |
           terraform plan -no-color -out=tfplan.binary
           terraform show -json tfplan.binary > tfplan.json
-        env:
-          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          TF_VAR_cloudflare_zone_id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
         continue-on-error: true
 
       - name: Validate Plan with OPA
@@ -153,9 +150,6 @@ jobs:
 
       - name: Terraform Apply
         run: terraform apply -auto-approve
-        env:
-          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          TF_VAR_cloudflare_zone_id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
 
       - name: Output Results
         run: terraform output -json
