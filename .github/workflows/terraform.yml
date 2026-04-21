@@ -1,0 +1,161 @@
+name: Terraform GitOps with OPA
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+env:
+  TF_CLOUD_ORGANIZATION: "your-org-name"
+  TF_WORKSPACE: "cloudflare-waf-gitops"
+  TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
+
+jobs:
+  validate:
+    name: Validate and Test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+          terraform_version: "1.6.0"
+
+      - name: Setup OPA
+        uses: open-policy-agent/setup-opa@v2
+        with:
+          version: latest
+
+      - name: Terraform Format Check
+        id: fmt
+        run: terraform fmt -check -recursive
+        continue-on-error: true
+
+      - name: Terraform Init
+        id: init
+        run: terraform init
+
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate -no-color
+
+      - name: Run OPA Tests
+        id: opa_test
+        run: |
+          echo "Running OPA policy tests..."
+          opa test policies/ -v
+          echo "✅ OPA tests passed"
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan -no-color -out=tfplan.binary
+          terraform show -json tfplan.binary > tfplan.json
+        env:
+          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TF_VAR_cloudflare_zone_id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+        continue-on-error: true
+
+      - name: Validate Plan with OPA
+        id: opa_eval
+        run: |
+          echo "Evaluating Terraform plan against OPA policies..."
+          
+          # Check for policy violations (deny rules)
+          DENY_OUTPUT=$(opa eval -i tfplan.json -d policies/waf_required.rego "data.terraform.deny" --format pretty)
+          echo "Deny evaluation result:"
+          echo "$DENY_OUTPUT"
+          
+          # Check for warnings
+          WARN_OUTPUT=$(opa eval -i tfplan.json -d policies/waf_required.rego "data.terraform.warn" --format pretty)
+          echo "Warning evaluation result:"
+          echo "$WARN_OUTPUT"
+          
+          # If deny output contains violations, fail the check
+          if echo "$DENY_OUTPUT" | grep -q "POLICY VIOLATION"; then
+            echo "❌ OPA policy violations found!"
+            echo "$DENY_OUTPUT"
+            exit 1
+          fi
+          
+          echo "✅ OPA policy validation passed"
+          
+          # Display warnings if any
+          if echo "$WARN_OUTPUT" | grep -q "WARNING"; then
+            echo "⚠️  Warnings found:"
+            echo "$WARN_OUTPUT"
+          fi
+
+      - name: Post Plan to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          PLAN: "${{ steps.plan.outputs.stdout }}"
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
+            #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
+            #### Terraform Validation 🤖\`${{ steps.validate.outcome }}\`
+            #### OPA Policy Tests 📋\`${{ steps.opa_test.outcome }}\`
+            #### OPA Policy Validation 🔒\`${{ steps.opa_eval.outcome }}\`
+            #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
+
+            <details><summary>Show Plan</summary>
+
+            \`\`\`terraform
+            ${process.env.PLAN}
+            \`\`\`
+
+            </details>
+
+            **Pusher:** @${{ github.actor }}
+            **Action:** ${{ github.event_name }}
+            **Workflow:** ${{ github.workflow }}`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+
+  apply:
+    name: Terraform Apply
+    needs: validate
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+          terraform_version: "1.6.0"
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
+        env:
+          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TF_VAR_cloudflare_zone_id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+
+      - name: Output Results
+        run: terraform output -json
