@@ -7,6 +7,12 @@ resource "cloudflare_ruleset" "waf_attack_score_protection" {
 
   rules = [
     {
+      action      = "skip"
+      expression  = "ip.src in {10.0.0.0/8 192.168.0.0/16}"
+      description = "Skip WAF for internal network ranges"
+      enabled     = true
+    },
+    {
       action      = "block"
       expression  = "(http.user_agent contains \"sqlmap\")"
       description = "Block known malicious scanner user agents"
