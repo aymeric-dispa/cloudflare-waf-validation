@@ -28,8 +28,8 @@ Get up and running in 5 minutes!
 # 1. Create organization
 # 2. Create workspace: "cloudflare-waf-validation" (API-driven)
 # 3. Add environment variables:
-#    - CLOUDFLARE_API_TOKEN (sensitive)
-#    - CLOUDFLARE_ZONE_ID
+#    - cloudflare_api_token (sensitive)
+#    - cloudflare_zone_id
 # 4. Get API token: Click profile picture → Account Settings → Tokens → Create
 ```
 
@@ -53,8 +53,6 @@ git push -u origin main
 
 # Add GitHub Secrets (Settings → Secrets → Actions):
 # - TF_API_TOKEN
-# - CLOUDFLARE_API_TOKEN  
-# - CLOUDFLARE_ZONE_ID
 ```
 
 ### 5. Test It! (30 sec)
@@ -115,33 +113,3 @@ git push origin test-deployment
 
 **Issue:** Terraform apply fails with "unauthorized"
 **Fix:** Verify Cloudflare API token has "Firewall Services: Edit" permission
-
-**Issue:** OPA policy fails
-**Fix:** Ensure `main.tf` has a rule with `cf.threat_score` expression
-
-## What's Protected?
-
-Your Cloudflare zone now has:
-
-- ✅ **Attack Score Protection**: Blocks requests with threat score ≥ 50
-- ✅ **Managed WAF Rules**: Cloudflare's curated ruleset active
-- ✅ **Policy Enforcement**: OPA ensures protection can't be removed
-- ✅ **Audit Trail**: All changes tracked in Git
-
-## Next Steps
-
-- 📖 Read [SETUP.md](SETUP.md) for detailed configuration
-- 🔧 Read [CONTRIBUTING.md](CONTRIBUTING.md) to make changes
-- 📊 Monitor blocked requests in Cloudflare Analytics
-- 🎯 Tune `waf_attack_score_threshold` based on your traffic
-
-## Architecture at a Glance
-
-```
-Developer → Git Push → GitHub Actions → OPA Validation → Terraform Cloud → Cloudflare WAF
-                              ↓
-                         ✅ or ❌
-                    (Policy enforced!)
-```
-
-**Key Point:** You cannot deploy WAF configuration that doesn't meet OPA policies. This ensures your site is always protected! 🛡️

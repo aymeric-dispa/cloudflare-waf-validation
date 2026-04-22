@@ -1,11 +1,17 @@
-resource "cloudflare_ruleset" "waf_attack_score_protection" {
+resource "cloudflare_ruleset" "zone_ruleset" {
   zone_id     = var.cloudflare_zone_id
-  name        = "WAF Attack Score Protection"
-  description = "Managed by Terraform - WAF attack score protection (OPA enforced)"
+  name        = "Zone ruleset"
+  description = "Zone ruleset"
   kind        = "zone"
   phase       = "http_request_firewall_custom"
 
   rules = [
+    {
+      action      = "log"
+      expression  = "true"
+      description = "Log all requests for audit"
+      enabled     = true
+    },
     {
       action = "skip"
       action_parameters = {
