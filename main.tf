@@ -25,6 +25,12 @@ resource "cloudflare_ruleset" "waf_attack_score_protection" {
       enabled     = true
     },
     {
+      action      = "block"
+      expression  = "(http.user_agent contains \"DirBuster\")"
+      description = "Block DirBuster directory scanner"
+      enabled     = true
+    },
+    {
       action      = var.waf_action
       expression  = "(cf.waf.score le ${var.waf_attack_score_threshold})"
       description = "Block/challenge requests with WAF attack score <= ${var.waf_attack_score_threshold}"
