@@ -18,7 +18,7 @@ resource "cloudflare_ruleset" "waf_attack_score_protection" {
 resource "cloudflare_ruleset" "waf_managed_rules" {
   zone_id     = var.cloudflare_zone_id
   name        = "WAF Managed Rules"
-  description = "Managed by Terraform - Cloudflare Managed WAF Ruleset"
+  description = "Managed by Terraform - Cloudflare Managed WAF Ruleset (OWASP Core Ruleset)"
   kind        = "zone"
   phase       = "http_request_firewall_managed"
 
@@ -27,15 +27,6 @@ resource "cloudflare_ruleset" "waf_managed_rules" {
       action = "execute"
       action_parameters = {
         id = "efb7b8c949ac4650a09736fc376e9aee"
-        overrides = {
-          rules = [
-            {
-              id      = "6179ae15870a4bb7b2d480d4843b323c"
-              enabled = false
-              comment = "Temporarily disabled - false positive on internal API"
-            }
-          ]
-        }
       }
       expression  = "true"
       description = "Execute Cloudflare Managed Ruleset"
