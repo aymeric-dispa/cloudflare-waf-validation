@@ -7,7 +7,10 @@ resource "cloudflare_ruleset" "waf_attack_score_protection" {
 
   rules = [
     {
-      action      = "skip"
+      action = "skip"
+      action_parameters = {
+        phases = ["http_request_firewall_managed"]
+      }
       expression  = "ip.src in {10.0.0.0/8 192.168.0.0/16}"
       description = "Skip WAF for internal network ranges"
       enabled     = true
