@@ -7,6 +7,12 @@ resource "cloudflare_ruleset" "waf_attack_score_protection" {
 
   rules = [
     {
+      action      = "block"
+      expression  = "(http.user_agent contains \"sqlmap\")"
+      description = "Block known malicious scanner user agents"
+      enabled     = true
+    },
+    {
       action      = var.waf_action
       expression  = "(cf.waf.score le ${var.waf_attack_score_threshold})"
       description = "Block/challenge requests with WAF attack score <= ${var.waf_attack_score_threshold}"
