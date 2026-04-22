@@ -21,7 +21,6 @@ jobs:
       pull-requests: write
     outputs:
       requires_approval: ${{ steps.override_check.outputs.requires_approval }}
-      run_id: ${{ steps.plan.outputs.run_id }}
     
     steps:
       - name: Checkout code
@@ -63,10 +62,8 @@ jobs:
         run: |
           PLAN_OUTPUT=$(terraform plan -no-color 2>&1)
           echo "$PLAN_OUTPUT"
-
           RUN_ID=$(echo "$PLAN_OUTPUT" | grep -o 'run-[A-Za-z0-9]*' | head -1)
           echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
-          echo "Captured TFC Run ID: $RUN_ID"
         continue-on-error: true
 
       - name: Download Plan JSON from Terraform Cloud
@@ -177,18 +174,45 @@ jobs:
     permissions:
       contents: read
 
-    steps:
-      - name: Confirm and Apply TFC Run
-        run: |
-          RUN_ID="${{ needs.validate.outputs.run_id }}"
-          echo "Applying TFC run: $RUN_ID"
+    env:
+      TF_WORKSPACE: infra-aymeric-cfd
 
-          curl -s \
-            -X POST \
+    steps:
+      - name: Trigger and Confirm TFC Apply
+        run: |
+          WORKSPACE_ID=$(curl -s \
+            -H "Authorization: Bearer $TF_API_TOKEN" \
+            "https://app.terraform.io/api/v2/organizations/$TF_CLOUD_ORGANIZATION/workspaces/$TF_WORKSPACE" \
+            | jq -r '.data.id')
+          echo "Workspace ID: $WORKSPACE_ID"
+
+          RUN_RESPONSE=$(curl -s -X POST \
+            -H "Authorization: Bearer $TF_API_TOKEN" \
+            -H "Content-Type: application/vnd.api+json" \
+            -d "{\"data\":{\"attributes\":{\"message\":\"Apply triggered by GitHub Actions (${{ github.sha }})\",\"is-destroy\":false},\"type\":\"runs\",\"relationships\":{\"workspace\":{\"data\":{\"type\":\"workspaces\",\"id\":\"$WORKSPACE_ID\"}}}}}" \
+            "https://app.terraform.io/api/v2/runs")
+
+          RUN_ID=$(echo "$RUN_RESPONSE" | jq -r '.data.id')
+          echo "Created run: $RUN_ID"
+
+          for i in $(seq 1 30); do
+            STATUS=$(curl -s \
+              -H "Authorization: Bearer $TF_API_TOKEN" \
+              "https://app.terraform.io/api/v2/runs/$RUN_ID" \
+              | jq -r '.data.attributes.status')
+            echo "Run status (attempt $i): $STATUS"
+            case "$STATUS" in
+              planned|cost_estimated|policy_checked) break ;;
+              errored|canceled|discarded) echo "❌ Run failed: $STATUS"; exit 1 ;;
+            esac
+            sleep 10
+          done
+
+          curl -s -X POST \
             -H "Authorization: Bearer $TF_API_TOKEN" \
             -H "Content-Type: application/vnd.api+json" \
             -d '{"data":{"attributes":{"comment":"Approved via GitHub Actions"},"type":"runs"}}' \
             "https://app.terraform.io/api/v2/runs/$RUN_ID/actions/apply"
 
-          echo "✅ Apply confirmed on Terraform Cloud — monitor progress at:"
-          echo "https://app.terraform.io/app/$TF_CLOUD_ORGANIZATION/workspaces"
+          echo "✅ Apply confirmed — monitor at:"
+          echo "https://app.terraform.io/app/$TF_CLOUD_ORGANIZATION/workspaces/$TF_WORKSPACE/runs/$RUN_ID"
