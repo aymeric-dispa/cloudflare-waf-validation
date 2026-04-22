@@ -203,6 +203,7 @@ jobs:
             echo "Run status (attempt $i): $STATUS"
             case "$STATUS" in
               planned|cost_estimated|policy_checked) break ;;
+              planned_and_finished) echo "✅ No changes to apply."; exit 0 ;;
               errored|canceled|discarded) echo "❌ Run failed: $STATUS"; exit 1 ;;
             esac
             sleep 10
