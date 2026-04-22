@@ -46,11 +46,10 @@ resource "cloudflare_ruleset" "waf_managed_rules" {
       action_parameters = {
         id = "efb7b8c949ac4650a09736fc376e9aee"
         overrides = {
-          rules = [
+          categories = [
             {
-              id      = "6179ae15870a4bb7b2d480d4843b323c"
-              enabled = false
-              comment = "Temporarily disabled - false positive on internal API"
+              category = "wordpress"
+              enabled  = false
             }
           ]
         }
