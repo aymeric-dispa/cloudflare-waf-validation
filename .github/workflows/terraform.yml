@@ -99,7 +99,7 @@ jobs:
             sleep 5
           done
 
-          HTTP_STATUS=$(curl -s -o tfplan.json -w "%{http_code}" \
+          HTTP_STATUS=$(curl -sL -o tfplan.json -w "%{http_code}" \
             -H "Authorization: Bearer $TF_API_TOKEN" \
             "https://app.terraform.io/api/v2/plans/$PLAN_ID/json-output")
 
