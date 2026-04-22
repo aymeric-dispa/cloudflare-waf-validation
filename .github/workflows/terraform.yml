@@ -178,17 +178,17 @@ jobs:
       contents: read
 
     steps:
-      - name: Confirm and Apply TFC Run
-        run: |
-          RUN_ID="${{ needs.validate.outputs.run_id }}"
-          echo "Applying TFC run: $RUN_ID"
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-          curl -s \
-            -X POST \
-            -H "Authorization: Bearer $TF_API_TOKEN" \
-            -H "Content-Type: application/vnd.api+json" \
-            -d '{"data":{"attributes":{"comment":"Approved via GitHub Actions"},"type":"runs"}}' \
-            "https://app.terraform.io/api/v2/runs/$RUN_ID/actions/apply"
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+          terraform_version: "1.6.0"
 
-          echo "✅ Apply confirmed on Terraform Cloud — monitor progress at:"
-          echo "https://app.terraform.io/app/$TF_CLOUD_ORGANIZATION/workspaces"
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve -no-color
