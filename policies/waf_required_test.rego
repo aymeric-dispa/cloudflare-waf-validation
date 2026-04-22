@@ -67,7 +67,7 @@ test_managed_ruleset_override_requires_approval if {
     count(msgs) > 0
 }
 
-test_managed_exception_skip_requires_approval if {
+test_managed_exception_any_non_execute_requires_approval if {
     msgs := requires_approval with input as {
         "planned_values": {
             "root_module": {
@@ -79,7 +79,7 @@ test_managed_exception_skip_requires_approval if {
                             "phase": "http_request_firewall_managed",
                             "rules": [
                                 {
-                                    "action": "skip",
+                                    "action": "log",
                                     "expression": "ip.src == 1.2.3.4",
                                     "enabled": true
                                 }

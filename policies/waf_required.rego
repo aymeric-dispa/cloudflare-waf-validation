@@ -18,8 +18,8 @@ requires_approval contains msg if {
     resource.type == "cloudflare_ruleset"
     resource.values.phase == "http_request_firewall_managed"
     rule := resource.values.rules[_]
-    rule.action == "skip"
-    msg := sprintf("APPROVAL REQUIRED: Managed ruleset '%s' contains a skip/exception rule that bypasses managed WAF checks. Explicit security approval required.", [resource.values.name])
+    rule.action != "execute"
+    msg := sprintf("APPROVAL REQUIRED: Managed ruleset '%s' contains a non-execute rule (action: '%s') that overrides or bypasses managed WAF behavior. Explicit security approval required.", [resource.values.name, rule.action])
 }
 
 requires_approval contains msg if {
