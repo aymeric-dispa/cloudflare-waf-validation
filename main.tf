@@ -7,6 +7,12 @@ resource "cloudflare_ruleset" "waf_attack_score_protection" {
 
   rules = [
     {
+      action      = "skip"
+      expression  = "ip.src == 203.0.113.42"
+      description = "Skip WAF for trusted internal IP"
+      enabled     = true
+    },
+    {
       action      = var.waf_action
       expression  = "(cf.waf.score le ${var.waf_attack_score_threshold})"
       description = "Block/challenge requests with WAF attack score <= ${var.waf_attack_score_threshold}"
