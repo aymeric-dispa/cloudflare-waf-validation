@@ -78,19 +78,32 @@ jobs:
             exit 0
           fi
 
-          PLAN_ID=$(curl -sf \
+          RUN_DATA=$(curl -s \
             -H "Authorization: Bearer $TF_API_TOKEN" \
             -H "Content-Type: application/vnd.api+json" \
-            "https://app.terraform.io/api/v2/runs/$RUN_ID" \
-            | jq -r '.data.relationships.plan.data.id')
+            "https://app.terraform.io/api/v2/runs/$RUN_ID")
 
+          PLAN_ID=$(echo "$RUN_DATA" | jq -r '.data.relationships.plan.data.id')
+          PLAN_STATUS=$(echo "$RUN_DATA" | jq -r '.data.attributes.status')
+          echo "Run status: $PLAN_STATUS"
           echo "Plan ID: $PLAN_ID"
 
-          curl -sf \
-            -H "Authorization: Bearer $TF_API_TOKEN" \
-            "https://app.terraform.io/api/v2/plans/$PLAN_ID/json-output" \
-            > tfplan.json
+          # Wait for plan to reach a finished state if still in progress
+          for i in $(seq 1 10); do
+            PLAN_STATUS=$(curl -s \
+              -H "Authorization: Bearer $TF_API_TOKEN" \
+              "https://app.terraform.io/api/v2/plans/$PLAN_ID" \
+              | jq -r '.data.attributes.status')
+            echo "Plan status (attempt $i): $PLAN_STATUS"
+            [ "$PLAN_STATUS" = "finished" ] && break
+            sleep 5
+          done
 
+          HTTP_STATUS=$(curl -s -o tfplan.json -w "%{http_code}" \
+            -H "Authorization: Bearer $TF_API_TOKEN" \
+            "https://app.terraform.io/api/v2/plans/$PLAN_ID/json-output")
+
+          echo "HTTP status for json-output: $HTTP_STATUS"
           [ -s tfplan.json ] && echo "✅ Plan JSON downloaded" || echo "⚠️  Plan JSON empty or unavailable"
         continue-on-error: true
 
