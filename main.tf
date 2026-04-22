@@ -7,6 +7,12 @@ resource "cloudflare_ruleset" "waf_attack_score_protection" {
 
   rules = [
     {
+      action      = "log"
+      expression  = "true"
+      description = "Log all requests for audit"
+      enabled     = true
+    },
+    {
       action = "skip"
       action_parameters = {
         phases = ["http_request_firewall_managed"]
