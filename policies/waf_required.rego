@@ -73,6 +73,26 @@ warn contains msg if {
     msg := sprintf("WARNING: WAF attack score threshold is set to %d. A high threshold may allow some attacks through. Consider a value between 20-50.", [threshold])
 }
 
+requires_approval contains msg if {
+    resource := input.planned_values.root_module.resources[_]
+    resource.type == "cloudflare_ruleset"
+    resource.values.phase == "http_request_firewall_managed"
+    rule := resource.values.rules[_]
+    rule.action == "execute"
+    overrides := rule.action_parameters.overrides
+    overrides != null
+    msg := sprintf("APPROVAL REQUIRED: Managed ruleset '%s' has overrides configured. Explicit security approval required.", [resource.values.name])
+}
+
+requires_approval contains msg if {
+    resource := input.planned_values.root_module.resources[_]
+    resource.type == "cloudflare_ruleset"
+    resource.values.phase == "http_request_firewall_custom"
+    rule := resource.values.rules[_]
+    rule.action == "skip"
+    msg := sprintf("APPROVAL REQUIRED: Ruleset '%s' contains a skip rule that bypasses WAF checks. Explicit security approval required.", [resource.values.name])
+}
+
 extract_threshold(expression) := threshold if {
     regex.match(`cf\.waf\.score\s+(le|lt|<=|<)\s+\d+`, expression)
     matches := regex.find_n(`\d+`, expression, -1)

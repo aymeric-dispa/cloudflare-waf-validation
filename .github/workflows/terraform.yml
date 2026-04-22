@@ -19,6 +19,8 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+    outputs:
+      requires_approval: ${{ steps.override_check.outputs.requires_approval }}
     
     steps:
       - name: Checkout code
@@ -69,6 +71,23 @@ jobs:
           name: tfplan
           path: tfplan.binary
           retention-days: 1
+
+      - name: Check for Managed Ruleset Overrides
+        id: override_check
+        run: |
+          if [ ! -f tfplan.json ]; then
+            echo "requires_approval=false" >> $GITHUB_OUTPUT
+            echo "⚠️  No plan file found, skipping override check"
+            exit 0
+          fi
+          APPROVAL_OUTPUT=$(opa eval -i tfplan.json -d policies/waf_required.rego "data.terraform.requires_approval" --format pretty)
+          if echo "$APPROVAL_OUTPUT" | grep -q "APPROVAL REQUIRED"; then
+            echo "requires_approval=true" >> $GITHUB_OUTPUT
+            echo "⚠️  Managed ruleset overrides detected - additional approval will be required before apply"
+          else
+            echo "requires_approval=false" >> $GITHUB_OUTPUT
+            echo "✅ No managed ruleset overrides detected"
+          fi
 
       - name: Validate Plan with OPA
         id: opa_eval
