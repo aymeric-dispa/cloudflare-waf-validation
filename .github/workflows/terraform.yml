@@ -21,6 +21,7 @@ jobs:
       pull-requests: write
     outputs:
       requires_approval: ${{ steps.override_check.outputs.requires_approval }}
+      run_id: ${{ steps.plan.outputs.run_id }}
     
     steps:
       - name: Checkout code
@@ -59,21 +60,39 @@ jobs:
 
       - name: Terraform Plan
         id: plan
-        env:
-          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          TF_VAR_cloudflare_zone_id: ${{ secrets.CLOUDFLARE_ZONE_ID }}
         run: |
-          terraform plan -no-color -out=tfplan.binary
-          terraform show -json tfplan.binary > tfplan.json
+          PLAN_OUTPUT=$(terraform plan -no-color 2>&1)
+          echo "$PLAN_OUTPUT"
+
+          RUN_ID=$(echo "$PLAN_OUTPUT" | grep -o 'run-[A-Za-z0-9]*' | head -1)
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+          echo "Captured TFC Run ID: $RUN_ID"
         continue-on-error: true
 
-      - name: Upload Plan Artifact
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        uses: actions/upload-artifact@v4
-        with:
-          name: tfplan
-          path: tfplan.binary
-          retention-days: 1
+      - name: Download Plan JSON from Terraform Cloud
+        id: download_plan
+        run: |
+          RUN_ID="${{ steps.plan.outputs.run_id }}"
+          if [ -z "$RUN_ID" ]; then
+            echo "⚠️  No run ID captured, skipping plan JSON download"
+            exit 0
+          fi
+
+          PLAN_ID=$(curl -sf \
+            -H "Authorization: Bearer $TF_API_TOKEN" \
+            -H "Content-Type: application/vnd.api+json" \
+            "https://app.terraform.io/api/v2/runs/$RUN_ID" \
+            | jq -r '.data.relationships.plan.data.id')
+
+          echo "Plan ID: $PLAN_ID"
+
+          curl -sf \
+            -H "Authorization: Bearer $TF_API_TOKEN" \
+            "https://app.terraform.io/api/v2/plans/$PLAN_ID/json-output" \
+            > tfplan.json
+
+          [ -s tfplan.json ] && echo "✅ Plan JSON downloaded" || echo "⚠️  Plan JSON empty or unavailable"
+        continue-on-error: true
 
       - name: Check for Managed Ruleset Overrides
         id: override_check
@@ -174,27 +193,19 @@ jobs:
     environment: production
     permissions:
       contents: read
-    
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Confirm and Apply TFC Run
+        run: |
+          RUN_ID="${{ needs.validate.outputs.run_id }}"
+          echo "Applying TFC run: $RUN_ID"
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
-          terraform_version: "1.6.0"
+          curl -s \
+            -X POST \
+            -H "Authorization: Bearer $TF_API_TOKEN" \
+            -H "Content-Type: application/vnd.api+json" \
+            -d '{"data":{"attributes":{"comment":"Approved via GitHub Actions"},"type":"runs"}}' \
+            "https://app.terraform.io/api/v2/runs/$RUN_ID/actions/apply"
 
-      - name: Terraform Init
-        run: terraform init
-
-      - name: Download Plan Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: tfplan
-
-      - name: Terraform Apply
-        run: terraform apply tfplan.binary
-
-      - name: Output Results
-        run: terraform output -json
+          echo "✅ Apply confirmed on Terraform Cloud — monitor progress at:"
+          echo "https://app.terraform.io/app/$TF_CLOUD_ORGANIZATION/workspaces"
