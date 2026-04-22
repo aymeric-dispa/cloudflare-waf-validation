@@ -50,6 +50,10 @@ resource "cloudflare_ruleset" "waf_managed_rules" {
             {
               category = "wordpress"
               enabled  = false
+            },
+            {
+              category = "drupal"
+              enabled  = false
             }
           ]
         }
