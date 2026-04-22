@@ -7,6 +7,12 @@ resource "cloudflare_ruleset" "waf_attack_score_protection" {
 
   rules = [
     {
+      action      = "log"
+      expression  = "(http.request.uri.path contains \"/admin\")"
+      description = "Log requests to admin paths for audit"
+      enabled     = true
+    },
+    {
       action      = "block"
       expression  = "(http.user_agent contains \"sqlmap\")"
       description = "Block known malicious scanner user agents"
