@@ -57,6 +57,15 @@ resource "cloudflare_ruleset" "waf_managed_rules" {
 
   rules = [
     {
+      action = "skip"
+      action_parameters = {
+        ruleset = "current"
+      }
+      expression  = "ip.src in {203.0.113.0/24}"
+      description = "Exception: skip managed WAF for trusted partner IP range"
+      enabled     = true
+    },
+    {
       action = "execute"
       action_parameters = {
         id = "efb7b8c949ac4650a09736fc376e9aee"

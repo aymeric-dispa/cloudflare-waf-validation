@@ -102,23 +102,23 @@ jobs:
 
           echo "HTTP status for json-output: $HTTP_STATUS"
           [ -s tfplan.json ] && echo "✅ Plan JSON downloaded" || echo "⚠️  Plan JSON empty or unavailable"
-        continue-on-error: true
 
-      - name: Check for Managed Ruleset Overrides
+      - name: Check for Sensitive WAF Changes
         id: override_check
         run: |
           if [ ! -f tfplan.json ]; then
-            echo "requires_approval=false" >> $GITHUB_OUTPUT
-            echo "⚠️  No plan file found, skipping override check"
-            exit 0
+            echo "❌ No plan file found - cannot evaluate WAF policy"
+            exit 1
           fi
           APPROVAL_OUTPUT=$(opa eval -i tfplan.json -d policies/waf_required.rego "data.terraform.requires_approval" --format pretty)
+          echo "OPA output:"
+          echo "$APPROVAL_OUTPUT"
           if echo "$APPROVAL_OUTPUT" | grep -q "APPROVAL REQUIRED"; then
             echo "requires_approval=true" >> $GITHUB_OUTPUT
-            echo "⚠️  Managed ruleset overrides detected - additional approval will be required before apply"
+            echo "⚠️  Sensitive WAF change detected - approval required"
           else
             echo "requires_approval=false" >> $GITHUB_OUTPUT
-            echo "✅ No managed ruleset overrides detected"
+            echo "✅ No sensitive WAF changes detected"
           fi
 
       - name: Post Plan to PR
