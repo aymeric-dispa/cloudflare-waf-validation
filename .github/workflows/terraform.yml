@@ -153,6 +153,16 @@ jobs:
               body: output
             })
 
+  security-review-override:
+    name: Security Review - Managed Ruleset Override
+    needs: validate
+    if: needs.validate.outputs.requires_approval == 'true' && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    environment: managed-ruleset-override
+    steps:
+      - name: Override Approved
+        run: echo "✅ Managed ruleset override reviewed and approved"
+
   apply:
     name: Terraform Apply
     needs: validate
