@@ -7,9 +7,15 @@ resource "cloudflare_ruleset" "waf_attack_score_protection" {
 
   rules = [
     {
+<<<<<<< feat/log-admin-requests
       action      = "log"
       expression  = "(http.request.uri.path contains \"/admin\")"
       description = "Log requests to admin paths for audit"
+=======
+      action      = "skip"
+      expression  = "ip.src in {10.0.0.0/8 192.168.0.0/16}"
+      description = "Skip WAF for internal network ranges"
+>>>>>>> main
       enabled     = true
     },
     {
