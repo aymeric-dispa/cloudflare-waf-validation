@@ -2,15 +2,106 @@ package terraform
 
 import rego.v1
 
-test_waf_attack_score_protection_exists if {
-    count(deny) == 0 with input as {
+test_no_overrides_no_approval_required if {
+    count(requires_approval) == 0 with input as {
         "planned_values": {
             "root_module": {
                 "resources": [
                     {
                         "type": "cloudflare_ruleset",
                         "values": {
-                            "name": "WAF Attack Score Protection",
+                            "name": "WAF Managed Rules",
+                            "phase": "http_request_firewall_managed",
+                            "rules": [
+                                {
+                                    "action": "execute",
+                                    "action_parameters": {
+                                        "id": "efb7b8c949ac4650a09736fc376e9aee"
+                                    },
+                                    "expression": "true",
+                                    "enabled": true
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+    }
+}
+
+test_managed_ruleset_override_requires_approval if {
+    msgs := requires_approval with input as {
+        "planned_values": {
+            "root_module": {
+                "resources": [
+                    {
+                        "type": "cloudflare_ruleset",
+                        "values": {
+                            "name": "WAF Managed Rules",
+                            "phase": "http_request_firewall_managed",
+                            "rules": [
+                                {
+                                    "action": "execute",
+                                    "action_parameters": {
+                                        "id": "efb7b8c949ac4650a09736fc376e9aee",
+                                        "overrides": {
+                                            "rules": [
+                                                {
+                                                    "id": "some-rule-id",
+                                                    "enabled": false
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "expression": "true",
+                                    "enabled": true
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+    }
+    count(msgs) > 0
+}
+
+test_skip_rule_requires_approval if {
+    msgs := requires_approval with input as {
+        "planned_values": {
+            "root_module": {
+                "resources": [
+                    {
+                        "type": "cloudflare_ruleset",
+                        "values": {
+                            "name": "WAF Custom Rules",
+                            "phase": "http_request_firewall_custom",
+                            "rules": [
+                                {
+                                    "action": "skip",
+                                    "expression": "ip.src == 1.2.3.4",
+                                    "enabled": true
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+    }
+    count(msgs) > 0
+}
+
+test_no_skip_rule_no_approval_required if {
+    count(requires_approval) == 0 with input as {
+        "planned_values": {
+            "root_module": {
+                "resources": [
+                    {
+                        "type": "cloudflare_ruleset",
+                        "values": {
+                            "name": "WAF Custom Rules",
                             "phase": "http_request_firewall_custom",
                             "rules": [
                                 {
@@ -25,144 +116,4 @@ test_waf_attack_score_protection_exists if {
             }
         }
     }
-}
-
-test_missing_waf_protection_fails if {
-    violations := deny with input as {
-        "planned_values": {
-            "root_module": {
-                "resources": []
-            }
-        }
-    }
-    count(violations) > 0
-}
-
-test_disabled_waf_rule_fails if {
-    violations := deny with input as {
-        "planned_values": {
-            "root_module": {
-                "resources": [
-                    {
-                        "type": "cloudflare_ruleset",
-                        "values": {
-                            "name": "WAF Attack Score Protection",
-                            "phase": "http_request_firewall_custom",
-                            "rules": [
-                                {
-                                    "action": "block",
-                                    "expression": "(cf.waf.score le 20)",
-                                    "enabled": false
-                                }
-                            ]
-                        }
-                    }
-                ]
-            }
-        }
-    }
-    count(violations) > 0
-}
-
-test_wrong_action_fails if {
-    violations := deny with input as {
-        "planned_values": {
-            "root_module": {
-                "resources": [
-                    {
-                        "type": "cloudflare_ruleset",
-                        "values": {
-                            "name": "WAF Attack Score Protection",
-                            "phase": "http_request_firewall_custom",
-                            "rules": [
-                                {
-                                    "action": "log",
-                                    "expression": "(cf.waf.score le 20)",
-                                    "enabled": true
-                                }
-                            ]
-                        }
-                    }
-                ]
-            }
-        }
-    }
-    count(violations) > 0
-}
-
-test_challenge_action_passes if {
-    count(deny) == 0 with input as {
-        "planned_values": {
-            "root_module": {
-                "resources": [
-                    {
-                        "type": "cloudflare_ruleset",
-                        "values": {
-                            "name": "WAF Attack Score Protection",
-                            "phase": "http_request_firewall_custom",
-                            "rules": [
-                                {
-                                    "action": "challenge",
-                                    "expression": "(cf.waf.score le 20)",
-                                    "enabled": true
-                                }
-                            ]
-                        }
-                    }
-                ]
-            }
-        }
-    }
-}
-
-test_threshold_below_20_fails if {
-    violations := deny with input as {
-        "planned_values": {
-            "root_module": {
-                "resources": [
-                    {
-                        "type": "cloudflare_ruleset",
-                        "values": {
-                            "name": "WAF Attack Score Protection",
-                            "phase": "http_request_firewall_custom",
-                            "rules": [
-                                {
-                                    "action": "block",
-                                    "expression": "(cf.waf.score le 10)",
-                                    "enabled": true
-                                }
-                            ]
-                        }
-                    }
-                ]
-            }
-        }
-    }
-    count(violations) > 0
-}
-
-test_high_threshold_warning if {
-    warnings := warn with input as {
-        "planned_values": {
-            "root_module": {
-                "resources": [
-                    {
-                        "type": "cloudflare_ruleset",
-                        "values": {
-                            "name": "WAF Attack Score Protection",
-                            "phase": "http_request_firewall_custom",
-                            "rules": [
-                                {
-                                    "action": "block",
-                                    "expression": "(cf.waf.score le 80)",
-                                    "enabled": true
-                                }
-                            ]
-                        }
-                    }
-                ]
-            }
-        }
-    }
-    count(warnings) > 0
 }
