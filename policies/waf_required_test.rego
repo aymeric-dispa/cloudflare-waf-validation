@@ -67,6 +67,32 @@ test_managed_ruleset_override_requires_approval if {
     count(msgs) > 0
 }
 
+test_managed_exception_skip_requires_approval if {
+    msgs := requires_approval with input as {
+        "planned_values": {
+            "root_module": {
+                "resources": [
+                    {
+                        "type": "cloudflare_ruleset",
+                        "values": {
+                            "name": "WAF Managed Rules",
+                            "phase": "http_request_firewall_managed",
+                            "rules": [
+                                {
+                                    "action": "skip",
+                                    "expression": "ip.src == 1.2.3.4",
+                                    "enabled": true
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+    }
+    count(msgs) > 0
+}
+
 test_skip_rule_requires_approval if {
     msgs := requires_approval with input as {
         "planned_values": {

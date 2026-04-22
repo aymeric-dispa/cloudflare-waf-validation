@@ -16,9 +16,18 @@ requires_approval contains msg if {
 requires_approval contains msg if {
     resource := input.planned_values.root_module.resources[_]
     resource.type == "cloudflare_ruleset"
+    resource.values.phase == "http_request_firewall_managed"
+    rule := resource.values.rules[_]
+    rule.action == "skip"
+    msg := sprintf("APPROVAL REQUIRED: Managed ruleset '%s' contains a skip/exception rule that bypasses managed WAF checks. Explicit security approval required.", [resource.values.name])
+}
+
+requires_approval contains msg if {
+    resource := input.planned_values.root_module.resources[_]
+    resource.type == "cloudflare_ruleset"
     resource.values.phase == "http_request_firewall_custom"
     rule := resource.values.rules[_]
     rule.action == "skip"
-    msg := sprintf("APPROVAL REQUIRED: Ruleset '%s' contains a skip rule that bypasses WAF checks. Explicit security approval required.", [resource.values.name])
+    msg := sprintf("APPROVAL REQUIRED: Custom ruleset '%s' contains a skip rule that bypasses WAF checks. Explicit security approval required.", [resource.values.name])
 }
 
