@@ -188,15 +188,15 @@ jobs:
               body: output
             })
 
-  security-review-override:
-    name: Security Review - Managed Ruleset Override
+  security-review-waf-change:
+    name: Security Review - WAF Exception or Override
     needs: validate
     if: needs.validate.outputs.requires_approval == 'true' && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    environment: managed-ruleset-override
+    environment: waf-security-review
     steps:
-      - name: Override Approved
-        run: echo "✅ Managed ruleset override reviewed and approved"
+      - name: Change Approved
+        run: echo "✅ WAF exception or override reviewed and approved"
 
   apply:
     name: Terraform Apply
