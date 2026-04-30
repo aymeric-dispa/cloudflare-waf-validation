@@ -66,6 +66,15 @@ resource "cloudflare_ruleset" "waf_managed_rules" {
       enabled     = true
     },
     {
+      action = "skip"
+      action_parameters = {
+        ruleset = "current"
+      }
+      expression  = "(http.request.uri.path matches \"^/api/v1/healthcheck\")"
+      description = "Exception: skip managed WAF for internal health check endpoint"
+      enabled     = true
+    },
+    {
       action = "execute"
       action_parameters = {
         id = "efb7b8c949ac4650a09736fc376e9aee"
